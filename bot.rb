@@ -5,6 +5,7 @@ require 'cgi'
 
 class HelloBot
   include Cinch::Plugin
+  USAGE = "Says hello"
   match "hello"
 
   def execute(m)
@@ -12,8 +13,20 @@ class HelloBot
   end
 end
 
+class Echo
+  include Cinch::Plugin
+  match /echo (.*)/
+  USAGE = "Echoes text back to you. Example: !echo You are so funny."
+
+  def execute(msg, text)
+    msg.reply(text)
+  end
+end
+
 class Version
   include Cinch::Plugin
+  USAGE = "Show bsdhorse version and license information"
+
   match "version"
   def execute(m)
     m.reply "I am bsdhorse IRC bot v0.0.1 (licensed under the beerware license)"
@@ -23,6 +36,8 @@ end
 class Google
   include Cinch::Plugin
   match /google (.+)/
+
+  USAGE = "I can google something for you. Example: !google freebsd"
 
   def search(query)
     url = "http://www.google.com/search?q=#{CGI.escape(query)}"
@@ -43,6 +58,7 @@ end
 
 
 class Seen
+
   class SeenStruct < Struct.new(:who, :where, :what, :time)
     def to_s
       "[#{time.asctime}] #{who} was seen in #{where} saying #{what}"
@@ -50,6 +66,7 @@ class Seen
   end
 
   include Cinch::Plugin
+  USAGE = "Ask when someone was last seen. Example !seen aje"
   listen_to :channel
   match /seen (.+)/
   
@@ -75,12 +92,43 @@ class Seen
   end
 end
 
+class Help
+  include Cinch::Plugin
+  USAGE = "Meta meta meta"
+  match /help(?: (\S+))?/
+  def execute(m, command)
+    usage = case command
+            when 'choose' then Choose::USAGE
+            when 'seen' then Seen::USAGE
+            when 'google' then Google::USAGE
+            when 'hello' then HelloBot::USAGE
+            when 'version' then Version::USAGE
+            when 'echo' then Echo::USAGE
+            else
+              "I only obey the following commands preceded by '!': choose, seen, google, hello, version, echo"
+            end
+    m.reply(usage)
+  end
+end
+
+
+class Choose
+  include Cinch::Plugin
+  USAGE = "Allow me to make a decision for you. Example: !choose several, comma separated, things"
+  match /choose (.+)/
+  def execute(m, list)
+    items = list.split ','
+    m.channel.action "I reached into the bag and pulled out.... #{items.sample.strip}."
+  end
+end
+
+
 bot = Cinch::Bot.new do
   configure do |c|
     c.nick = 'bsdhorse'
     c.server = 'irc.oz.org' 
     c.channels = [ "#bugs" ]
-    c.plugins.plugins = [HelloBot, Seen, Google, Version]
+    c.plugins.plugins = [HelloBot, Seen, Google, Version, Echo, Choose, Help]
   end
 end
 
